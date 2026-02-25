@@ -33,6 +33,17 @@ function App() {
                 </button>
               </li>
             </ul>
+
+            <form className="form-add-friend" action="">
+              <label htmlFor="friend">🧑🏽‍🤝‍👩🏽Friend name</label>
+              <input name="friend" type="text" />
+
+              <label htmlFor="image">🖼️Image URL</label>
+              <input name="image" type="text" />
+
+              <button className="button">Add</button>
+            </form>
+
             <div className="button">Add Friend</div>
           </div>
         </div>
