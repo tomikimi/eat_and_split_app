@@ -6,11 +6,29 @@ function generateRandomNumber() {
 
 function App() {
   const [friendsList, setFriendsList] = useState([]);
+  const [splitBillToggle, setSplitBillToggle] = useState(null);
+  const [friendData, setFriendData] = useState();
 
   const pravatarGen = `https://i.pravatar.cc/${generateRandomNumber()}`;
 
   function handleFriendList(friend) {
     setFriendsList((currFriendList) => [friend, ...currFriendList]);
+  }
+
+  function handleSplitBillToggle(friend) {
+    setSplitBillToggle((currState) =>
+      currState === friend.id ? "" : friend.id,
+    );
+    setFriendData(friend);
+  }
+
+  function handleBillSplit(data) {
+    const copyFriend = [...friendsList];
+    const index = copyFriend.findIndex((friend) => friend.id === data.id);
+    copyFriend[index].balance = data.balance;
+    copyFriend[index].debtStatus = data.debtStatus;
+
+    setFriendsList(copyFriend);
   }
 
   return (
@@ -20,23 +38,44 @@ function App() {
       </div>
 
       <div className="app">
-        <ListofFriends friendsList={friendsList}>
+        <ListofFriends
+          friendsList={friendsList}
+          splitBillToggle={splitBillToggle}
+          onHandleSplitBillToggle={handleSplitBillToggle}
+        >
           <AddFriend
             onAddFriend={handleFriendList}
             pravatar={pravatarGen}
           ></AddFriend>
         </ListofFriends>
-        <SplitBill></SplitBill>
+        {splitBillToggle ? (
+          <SplitBill
+            friendData={friendData}
+            handleBillSplit={handleBillSplit}
+          ></SplitBill>
+        ) : (
+          ""
+        )}
       </div>
     </>
   );
 }
 
-function ListofFriends({ friendsList, children }) {
+function ListofFriends({
+  friendsList,
+  splitBillToggle,
+  onHandleSplitBillToggle,
+  children,
+}) {
   const divStyle = {
     marginBottom: "1.5rem",
   };
   const [formToggle, setFormToggle] = useState(false);
+
+  function handleSplitBillForm(data) {
+    onHandleSplitBillToggle(data);
+  }
+
   return (
     <>
       <div className="sidebar">
@@ -46,13 +85,25 @@ function ListofFriends({ friendsList, children }) {
               <li key={friend.id}>
                 <img src={friend.image} alt="" />
                 <h3>{friend.name}</h3>
-                <p>
-                  {friend.balance === 0
-                    ? `You and ${friend.name} are even`
-                    : `Hello ${friend.name}`}
-                </p>
-                <button type="button" className="button">
-                  Select
+                {Number(friend.balance) === 0 && (
+                  <p>you and {friend.name} are even</p>
+                )}
+                {Number(friend.balance) !== 0 && (
+                  <p
+                    className={`${friend.debtStatus === true ? "green" : "red"}`}
+                  >
+                    {friend.debtStatus === true
+                      ? `${friend.name} owes you ${Math.abs(friend.balance)} Naira.`
+                      : `You owe ${friend.name} ${friend.balance} Naira`}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => handleSplitBillForm(friend)}
+                >
+                  {friend.id === splitBillToggle ? `Close` : `Select`}
                 </button>
               </li>
             ))}
@@ -115,24 +166,73 @@ function AddFriend({ onAddFriend, pravatar }) {
   );
 }
 
-function SplitBill() {
+function SplitBill({ friendData, handleBillSplit }) {
+  // console.log(friendData);
+  const [billValue, setBillValue] = useState();
+  const [expenseValue, setExpenseValue] = useState();
+  const [friendExpense, setFriendExpense] = useState();
+  const [billPayer, setBillPayer] = useState("You");
+
+  function handleBillValue(e) {
+    setBillValue(e.target.value);
+    setFriendExpense(e.target.value);
+  }
+
+  function handleExpenseValue(e) {
+    setExpenseValue(e.target.value);
+    setFriendExpense(billValue - e.target.value);
+  }
+
+  function handleSelectBillPayer(e) {
+    setBillPayer(e.target.value);
+  }
+
+  function handleBillExpense(e) {
+    e.preventDefault();
+
+    let data;
+
+    console.log(billPayer);
+
+    if (billPayer === "You") {
+      data = {
+        ...friendData,
+        balance: -friendExpense,
+        debtStatus: true,
+      };
+    } else {
+      data = { ...friendData, balance: expenseValue, debtStatus: false };
+    }
+
+    handleBillSplit(data);
+  }
   return (
     <>
-      <form className="form-split-bill">
-        <h2>split a bill with daniel</h2>
-        <label htmlFor="bill_value">💰Bill Value</label>
-        <input name="bill_value" type="text" />
+      <form className="form-split-bill" onSubmit={handleBillExpense}>
+        <h2>split a bill with {friendData.name}</h2>
+        <label htmlFor="billValue">💰Bill Value</label>
+        <input
+          name="billValue"
+          type="number"
+          value={billValue}
+          onChange={handleBillValue}
+        />
 
         <label htmlFor="expense">🧍🏽‍♂️Your Expense</label>
-        <input name="expense" type="text" />
+        <input
+          name="expense"
+          type="number"
+          value={expenseValue}
+          onChange={handleExpenseValue}
+        />
 
-        <label htmlFor="expense">🧑🏽‍🤝‍👩🏽Daniels Expense</label>
-        <input name="expense" disabled type="text" />
+        <label htmlFor="expense">🧑🏽‍🤝‍👩🏽{friendData.name + `s`} Expense</label>
+        <input name="expense" disabled type="text" value={friendExpense} />
 
         <label htmlFor="expense">🤑Who is paying the bill?</label>
-        <select>
-          <option value="you">You</option>
-          <option value="friend">Friend</option>
+        <select value={billPayer} onChange={handleSelectBillPayer}>
+          <option value="You">You</option>
+          <option value={friendData.name}>{friendData.name}</option>
         </select>
         <button className="button">Split Bill</button>
       </form>
